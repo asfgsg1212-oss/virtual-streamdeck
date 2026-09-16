@@ -13,6 +13,8 @@ const api = {
     ipcRenderer.invoke('overlay:resizeForPage', cols, rows),
   previewOverlay: (config: AppConfig): Promise<void> => ipcRenderer.invoke('overlay:preview', config),
   stopOverlayPreview: (): Promise<void> => ipcRenderer.invoke('overlay:stopPreview'),
+  reportGridDrag: (size: { cellWidth: number; cellHeight: number }): Promise<void> =>
+    ipcRenderer.invoke('overlay:gridDrag', size),
   pickFile: (): Promise<string | null> => ipcRenderer.invoke('dialog:pickFile'),
   listRunningApps: (): Promise<RunningApp[]> => ipcRenderer.invoke('apps:listRunning'),
   pickImage: (): Promise<string | null> => ipcRenderer.invoke('dialog:pickImage'),
@@ -30,6 +32,11 @@ const api = {
     const listener = (_e: unknown, size: { width: number; height: number }): void => cb(size)
     ipcRenderer.on('overlay:previewResized', listener)
     return () => ipcRenderer.removeListener('overlay:previewResized', listener)
+  },
+  onGridDragged: (cb: (size: { cellWidth: number; cellHeight: number }) => void): (() => void) => {
+    const listener = (_e: unknown, size: { cellWidth: number; cellHeight: number }): void => cb(size)
+    ipcRenderer.on('overlay:gridDragged', listener)
+    return () => ipcRenderer.removeListener('overlay:gridDragged', listener)
   }
 }
 

@@ -16,6 +16,9 @@ function sendWhenReady(win: BrowserWindow, channel: string, ...args: unknown[]):
 
 let overlayWin: BrowserWindow | null = null
 let editorWin: BrowserWindow | null = null
+// The config previewOverlay() was last called with, so reportGridDrag() can work out the box
+// size for a live cellWidth/cellHeight drag without the renderer having to resend everything.
+let lastPreviewConfig: AppConfig | null = null
 
 function createOverlayWindow(): BrowserWindow {
   const win = new BrowserWindow({
@@ -138,6 +141,16 @@ function boundsBesideEditor(width: number, height: number): { x: number; y: numb
   return boundsAround(area.x + area.width / 2, area.y + area.height / 2, width, height)
 }
 
+/** Re-sizes around the window's own current center — no relation to the editor's position.
+ *  Used for every preview resize except the very first, so nothing ever fights a user drag by
+ *  snapping the box back to "beside the editor." */
+function resizeInPlace(win: BrowserWindow, width: number, height: number): void {
+  const current = win.getBounds()
+  const centerX = current.x + current.width / 2
+  const centerY = current.y + current.height / 2
+  setPreviewBounds(win, boundsAround(centerX, centerY, width, height))
+}
+
 let previewFollow: { move: () => void; minimize: () => void; restore: () => void } | null = null
 // Set around every setBounds() we make ourselves while previewing, so the 'resize' watcher below
 // can tell "we just repositioned/resized this" apart from "the user actually dragged an edge."
@@ -231,15 +244,45 @@ export function previewOverlay(config: AppConfig): void {
   win.setResizable(true)
   win.setMovable(true)
   win.setIgnoreMouseEvents(false)
-  setPreviewBounds(win, boundsBesideEditor(width, height))
+  // Only the first time this session does the box jump to "beside the editor" — every later
+  // resize (a field edit, or feedback from the user dragging the box itself) just resizes it
+  // around wherever it currently is, so a drag is never fought back into that fixed spot.
+  if (wasVisible) resizeInPlace(win, width, height)
+  else setPreviewBounds(win, boundsBesideEditor(width, height))
   startPreviewFollow()
   startPreviewResizeWatch(win)
+  lastPreviewConfig = config
 
   sendWhenReady(win, 'config:updated', config)
   sendWhenReady(win, 'overlay:previewMode', true)
 
   const editorMinimized = editorWin && !editorWin.isDestroyed() && editorWin.isMinimized()
   if (!wasVisible && !editorMinimized) win.showInactive()
+}
+
+/**
+ * Called (repeatedly, live) while the user drags the in-page grid-size handle during preview.
+ * The window's outer edge controls the close-zone margin (see the 'resize' watcher above); this
+ * is the other, independent control — it keeps the margin fixed and grows/shrinks just the grid,
+ * resizing the window to match and reporting the new cellWidth/cellHeight back to Settings.
+ */
+export function reportGridDrag(cellWidth: number, cellHeight: number): void {
+  const win = getExistingOverlayWindow()
+  if (!win || !lastPreviewConfig) return
+  const config: AppConfig = {
+    ...lastPreviewConfig,
+    gridStyle: { ...lastPreviewConfig.gridStyle, cellWidth, cellHeight }
+  }
+  const active = findActive(config)
+  const cols = active?.page.cols ?? DEFAULT_COLS
+  const rows = active?.page.rows ?? DEFAULT_ROWS
+  const { width, height } = overlaySize(cols, rows, config.gridStyle, config.showPageDots, config.closeZone)
+  resizeInPlace(win, width, height)
+
+  const editor = getEditorWindow()
+  if (editor && !editor.isDestroyed()) {
+    editor.webContents.send('overlay:gridDragged', { cellWidth, cellHeight })
+  }
 }
 
 /** Ends a settings-preview session: stop following the editor window, restore normal
@@ -254,6 +297,7 @@ export function stopOverlayPreview(): void {
     win.setMovable(false)
     win.setAlwaysOnTop(true, 'screen-saver')
   }
+  lastPreviewConfig = null
   hideOverlay()
 }
 

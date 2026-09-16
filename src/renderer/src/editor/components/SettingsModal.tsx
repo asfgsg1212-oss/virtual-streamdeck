@@ -89,26 +89,33 @@ export default function SettingsModal(props: Props): React.JSX.Element {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Dragging the preview box's own edge resizes it — work the dragged size back into
-  // cellWidth/cellHeight (the only things a box size maps back onto) instead of just letting
-  // the window snap back to whatever the fields say on the next render.
+  // Two independent mouse controls on the preview box, deliberately kept apart:
+  // - dragging the window's own outer edge resizes the close-zone margin, grid untouched
+  // - dragging the little grip on the grid's own corner resizes cellWidth/cellHeight, margin
+  //   untouched (see the GridResizeHandle in the overlay itself, reporting via onGridDragged)
   useEffect(() => {
     return window.deck.onPreviewResized(({ width, height }) => {
       const cols = props.page.cols
       const rows = props.page.rows
-      const cellWidth =
-        (width - closeZone.margin * 2 - GRID_PADDING * 2 - (cols - 1) * gridStyle.gap) / cols
-      const cellHeight =
-        (height -
-          closeZone.margin * 2 -
-          GRID_PADDING * 2 -
-          (showPageDots ? PAGE_DOTS_HEIGHT : 0) -
-          (rows - 1) * gridStyle.gap) /
-        rows
+      const contentWidth = cols * gridStyle.cellWidth + (cols - 1) * gridStyle.gap + GRID_PADDING * 2
+      const contentHeight =
+        rows * gridStyle.cellHeight +
+        (rows - 1) * gridStyle.gap +
+        GRID_PADDING * 2 +
+        (showPageDots ? PAGE_DOTS_HEIGHT : 0)
+      const marginFromWidth = (width - contentWidth) / 2
+      const marginFromHeight = (height - contentHeight) / 2
+      setCloseZone((z) => ({ ...z, margin: clampZone((marginFromWidth + marginFromHeight) / 2, 'margin') }))
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gridStyle.cellWidth, gridStyle.cellHeight, gridStyle.gap, showPageDots, props.page.cols, props.page.rows])
+
+  useEffect(() => {
+    return window.deck.onGridDragged(({ cellWidth, cellHeight }) => {
       patchStyle({ cellWidth, cellHeight })
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [closeZone.margin, gridStyle.gap, showPageDots, props.page.cols, props.page.rows])
+  }, [])
 
   const patchStyle = (patch: Partial<GridStyle>): void =>
     setGridStyle((s) => {
@@ -189,7 +196,8 @@ export default function SettingsModal(props: Props): React.JSX.Element {
           <label>덱 버튼 모양</label>
           <p className="field-hint">
             에디터 창 옆에 실제 오버레이 창이 떠서 지금 이 값 그대로 보여줘요 — 별도의 미리보기가
-            아니라 진짜예요. 마우스로 가장자리를 드래그해서 크기를 직접 조절할 수도 있어요.
+            아니라 진짜예요. 미리보기 그리드 모서리의 작은 점(⬦)을 드래그해서 크기를 직접 조절할 수도
+            있어요.
           </p>
           <div className="grid-style-fields">
             <label className="grid-style-field">
@@ -270,7 +278,8 @@ export default function SettingsModal(props: Props): React.JSX.Element {
           <label>바깥 클릭 대신 — 마우스가 벗어나면 자동으로 닫히는 범위</label>
           <p className="field-hint">
             오버레이 밖으로 마우스가 나가면 자동으로 닫혀요. 이 범위 안에서는 계속 열려있어요.
-            지금 옆에 뜬 실제 미리보기에서 범위가 그대로 보여요.
+            지금 옆에 뜬 실제 미리보기 창의 가장자리를 드래그해도 이 범위가 조절돼요 (그리드
+            크기는 그대로 두고요).
           </p>
           <div className="grid-style-fields">
             <label className="grid-style-field">

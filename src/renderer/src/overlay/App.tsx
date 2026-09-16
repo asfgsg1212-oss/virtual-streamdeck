@@ -1,8 +1,39 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import type { AppConfig, DeckButton, GridContents, Profile } from '@shared/types'
 import { PAGE_DOTS_HEIGHT } from '@shared/constants'
 import { findActive, resolveGrid } from '@shared/selectors'
 import GridCells from '@renderer/shared/GridCells'
+
+/** Preview-only drag handle: independent of the window's own outer-edge resize (which controls
+ *  the close-zone margin), this one grows/shrinks just the grid — cellWidth/cellHeight. */
+function GridResizeHandle(props: { cols: number; rows: number; cellWidth: number; cellHeight: number }): React.JSX.Element {
+  const start = useRef<{ x: number; y: number; cellWidth: number; cellHeight: number } | null>(null)
+
+  const onMouseDown = (e: React.MouseEvent): void => {
+    e.preventDefault()
+    e.stopPropagation()
+    start.current = { x: e.screenX, y: e.screenY, cellWidth: props.cellWidth, cellHeight: props.cellHeight }
+
+    const onMove = (ev: MouseEvent): void => {
+      const s = start.current
+      if (!s) return
+      // screen-space, not client-space: the window itself resizes live as we drag, which would
+      // otherwise make client coordinates jump around under the cursor.
+      const cellWidth = Math.max(1, s.cellWidth + (ev.screenX - s.x) / props.cols)
+      const cellHeight = Math.max(1, s.cellHeight + (ev.screenY - s.y) / props.rows)
+      window.deck.reportGridDrag({ cellWidth, cellHeight })
+    }
+    const onUp = (): void => {
+      start.current = null
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+  }
+
+  return <div className="overlay-grid-handle" onMouseDown={onMouseDown} title="그리드 크기 조절" />
+}
 
 export default function App(): React.JSX.Element {
   const [config, setConfig] = useState<AppConfig | null>(null)
@@ -140,6 +171,14 @@ export default function App(): React.JSX.Element {
             </button>
           )}
         </div>
+        {isPreview && (
+          <GridResizeHandle
+            cols={page.cols}
+            rows={page.rows}
+            cellWidth={style.cellWidth}
+            cellHeight={style.cellHeight}
+          />
+        )}
       </div>
     </div>
   )

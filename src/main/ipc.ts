@@ -8,7 +8,8 @@ import {
   getExistingOverlayWindow,
   resizeOverlayForPage,
   previewOverlay,
-  stopOverlayPreview
+  stopOverlayPreview,
+  reportGridDrag
 } from './windows'
 import { listRunningApps } from './apps'
 import { AppConfig, ButtonAction } from '../shared/types'
@@ -77,6 +78,10 @@ export function registerIpcHandlers(deps: IpcDeps): void {
 
   ipcMain.handle('overlay:stopPreview', () => {
     stopOverlayPreview()
+  })
+
+  ipcMain.handle('overlay:gridDrag', (_e, size: { cellWidth: number; cellHeight: number }) => {
+    reportGridDrag(size.cellWidth, size.cellHeight)
   })
 
   ipcMain.handle('apps:listRunning', () => listRunningApps())
