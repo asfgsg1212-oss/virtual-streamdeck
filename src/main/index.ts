@@ -8,6 +8,32 @@ import { registerIpcHandlers } from './ipc'
 
 let tray: Tray | null = null
 
+const UPDATE_CHECK_INTERVAL_MS = 4 * 60 * 60 * 1000
+
+// The app lives in the tray and can stay open for days, so checking only once at launch means
+// a build released after that point never gets picked up until the user happens to restart. This
+// re-checks periodically too, and (when manual) reports back either way instead of staying silent.
+function checkForUpdates(manual: boolean): void {
+  if (is.dev) return
+  autoUpdater
+    .checkForUpdatesAndNotify()
+    .then((result) => {
+      if (!manual) return
+      const latest = result?.updateInfo?.version
+      if (latest && latest !== app.getVersion()) {
+        dialog.showMessageBox({
+          title: '업데이트 확인',
+          message: `새 버전 ${latest}을(를) 받고 있어요. 준비되면 알려드릴게요.`
+        })
+      } else {
+        dialog.showMessageBox({ title: '업데이트 확인', message: '이미 최신 버전이에요.' })
+      }
+    })
+    .catch((err) => {
+      if (manual) dialog.showErrorBox('업데이트 확인 실패', String(err))
+    })
+}
+
 function registerGlobalHotkey(combo: string): boolean {
   globalShortcut.unregisterAll()
   return globalShortcut.register(combo, () => {
@@ -19,6 +45,7 @@ function buildTrayMenu(): Menu {
   const config = loadConfig()
   return Menu.buildFromTemplate([
     { label: '에디터 열기', click: () => createEditorWindow() },
+    { label: '업데이트 확인', click: () => checkForUpdates(true) },
     { type: 'separator' },
     {
       label: 'Windows 시작 시 자동 실행',
@@ -75,11 +102,8 @@ if (!gotLock) {
 
     createEditorWindow()
 
-    // GitHub Releases is the update source (see electron-builder.yml's publish config).
-    // No-op in dev (unpackaged), and any check/download failure (e.g. offline) is just ignored.
-    if (!is.dev) {
-      autoUpdater.checkForUpdatesAndNotify().catch(() => {})
-    }
+    checkForUpdates(false)
+    setInterval(() => checkForUpdates(false), UPDATE_CHECK_INTERVAL_MS)
   })
 
   app.on('window-all-closed', () => {
