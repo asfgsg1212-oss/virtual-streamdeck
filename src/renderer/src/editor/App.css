@@ -176,6 +176,13 @@ body,
   border-color: var(--accent);
 }
 
+.sidebar-version {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 11px;
+  text-align: left;
+}
+
 /* Main */
 .app-main {
   flex: 1;

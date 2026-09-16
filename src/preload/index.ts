@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron'
 import type { AppConfig, ButtonAction, RunningApp } from '../shared/types'
 
 const api = {
+  getAppVersion: (): Promise<string> => ipcRenderer.invoke('app:getVersion'),
   getConfig: (): Promise<AppConfig> => ipcRenderer.invoke('config:get'),
   saveConfig: (config: AppConfig): Promise<{ hotkeyError: boolean }> =>
     ipcRenderer.invoke('config:save', config),
@@ -19,6 +20,16 @@ const api = {
     const listener = (_e: unknown, config: AppConfig): void => cb(config)
     ipcRenderer.on('config:updated', listener)
     return () => ipcRenderer.removeListener('config:updated', listener)
+  },
+  onPreviewMode: (cb: (isPreview: boolean) => void): (() => void) => {
+    const listener = (_e: unknown, isPreview: boolean): void => cb(isPreview)
+    ipcRenderer.on('overlay:previewMode', listener)
+    return () => ipcRenderer.removeListener('overlay:previewMode', listener)
+  },
+  onPreviewResized: (cb: (size: { width: number; height: number }) => void): (() => void) => {
+    const listener = (_e: unknown, size: { width: number; height: number }): void => cb(size)
+    ipcRenderer.on('overlay:previewResized', listener)
+    return () => ipcRenderer.removeListener('overlay:previewResized', listener)
   }
 }
 

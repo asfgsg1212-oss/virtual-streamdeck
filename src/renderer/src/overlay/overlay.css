@@ -24,6 +24,16 @@ body,
   height: 100%;
 }
 
+/* Settings preview only: drag the margin strip to reposition the box, resize by dragging the
+   window edge (native, needs no CSS) — the grid itself stays non-draggable so it still reads as
+   "here's what you'll see," not a window chrome. */
+.overlay-shell--preview {
+  -webkit-app-region: drag;
+}
+.overlay-shell--preview .overlay-content {
+  -webkit-app-region: no-drag;
+}
+
 .overlay-zone {
   position: absolute;
   inset: 0;

@@ -8,6 +8,7 @@ export default function App(): React.JSX.Element {
   const [config, setConfig] = useState<AppConfig | null>(null)
   const [pageId, setPageId] = useState<string | null>(null)
   const [folderPath, setFolderPath] = useState<string[]>([])
+  const [isPreview, setIsPreview] = useState(false)
 
   useEffect(() => {
     window.deck.getConfig().then((cfg) => {
@@ -24,9 +25,11 @@ export default function App(): React.JSX.Element {
         return findActive(cfg)?.page.id ?? null
       })
     })
+    const offPreview = window.deck.onPreviewMode(setIsPreview)
 
     return () => {
       offConfig()
+      offPreview()
     }
   }, [])
 
@@ -63,6 +66,8 @@ export default function App(): React.JSX.Element {
 
   const runButton = useCallback(
     (btn: DeckButton, profile: Profile, root: GridContents) => {
+      // Just a picture of what pressing this would do — don't actually launch/type/switch.
+      if (isPreview) return
       if (!btn.action) return
       if (btn.action.type === 'folder') {
         enterFolder(btn.id, root)
@@ -85,7 +90,7 @@ export default function App(): React.JSX.Element {
       // before main sends the actual key/mouse input.
       window.deck.hideOverlay().then(() => window.deck.executeAction(btn.action!))
     },
-    [pageId, goToPage, enterFolder]
+    [isPreview, pageId, goToPage, enterFolder]
   )
 
   if (!config) return <div className="overlay-shell" />
@@ -100,8 +105,8 @@ export default function App(): React.JSX.Element {
 
   return (
     <div
-      className="overlay-shell"
-      onMouseLeave={close}
+      className={`overlay-shell ${isPreview ? 'overlay-shell--preview' : ''}`}
+      onMouseLeave={isPreview ? undefined : close}
       style={
         {
           '--zone-margin': `${zone.margin}px`,

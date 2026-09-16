@@ -35,6 +35,8 @@ async function openDialog(
 }
 
 export function registerIpcHandlers(deps: IpcDeps): void {
+  ipcMain.handle('app:getVersion', () => app.getVersion())
+
   ipcMain.handle('config:get', () => loadConfig())
 
   ipcMain.handle('config:save', (_e, config: AppConfig) => {

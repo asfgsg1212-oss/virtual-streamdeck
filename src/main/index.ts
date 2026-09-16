@@ -8,30 +8,58 @@ import { registerIpcHandlers } from './ipc'
 
 let tray: Tray | null = null
 
-const UPDATE_CHECK_INTERVAL_MS = 4 * 60 * 60 * 1000
+// Ask before installing, rather than silently auto-downloading.
+autoUpdater.autoDownload = false
 
-// The app lives in the tray and can stay open for days, so checking only once at launch means
-// a build released after that point never gets picked up until the user happens to restart. This
-// re-checks periodically too, and (when manual) reports back either way instead of staying silent.
+let manualUpdateCheck = false
+
+autoUpdater.on('update-available', (info) => {
+  dialog
+    .showMessageBox({
+      type: 'question',
+      buttons: ['업데이트', '나중에'],
+      defaultId: 0,
+      cancelId: 1,
+      title: '업데이트',
+      message: `새 버전(${info.version})이 나왔습니다. 업데이트 하시겠습니까?`
+    })
+    .then((result) => {
+      if (result.response === 0) autoUpdater.downloadUpdate()
+    })
+  manualUpdateCheck = false
+})
+
+autoUpdater.on('update-not-available', () => {
+  if (manualUpdateCheck) {
+    dialog.showMessageBox({ title: '업데이트 확인', message: '이미 최신 버전이에요.' })
+  }
+  manualUpdateCheck = false
+})
+
+autoUpdater.on('error', (err) => {
+  if (manualUpdateCheck) dialog.showErrorBox('업데이트 확인 실패', String(err))
+  manualUpdateCheck = false
+})
+
+autoUpdater.on('update-downloaded', () => {
+  dialog
+    .showMessageBox({
+      type: 'info',
+      buttons: ['지금 재시작', '나중에'],
+      defaultId: 0,
+      cancelId: 1,
+      title: '업데이트 준비 완료',
+      message: '새 버전을 받았어요. 지금 재시작해서 적용할까요?'
+    })
+    .then((result) => {
+      if (result.response === 0) autoUpdater.quitAndInstall()
+    })
+})
+
 function checkForUpdates(manual: boolean): void {
   if (is.dev) return
-  autoUpdater
-    .checkForUpdatesAndNotify()
-    .then((result) => {
-      if (!manual) return
-      const latest = result?.updateInfo?.version
-      if (latest && latest !== app.getVersion()) {
-        dialog.showMessageBox({
-          title: '업데이트 확인',
-          message: `새 버전 ${latest}을(를) 받고 있어요. 준비되면 알려드릴게요.`
-        })
-      } else {
-        dialog.showMessageBox({ title: '업데이트 확인', message: '이미 최신 버전이에요.' })
-      }
-    })
-    .catch((err) => {
-      if (manual) dialog.showErrorBox('업데이트 확인 실패', String(err))
-    })
+  manualUpdateCheck = manual
+  autoUpdater.checkForUpdates().catch(() => {})
 }
 
 function registerGlobalHotkey(combo: string): boolean {
@@ -103,7 +131,6 @@ if (!gotLock) {
     createEditorWindow()
 
     checkForUpdates(false)
-    setInterval(() => checkForUpdates(false), UPDATE_CHECK_INTERVAL_MS)
   })
 
   app.on('window-all-closed', () => {

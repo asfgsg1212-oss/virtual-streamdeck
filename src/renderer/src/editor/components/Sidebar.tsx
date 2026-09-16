@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { DeckPage, Profile } from '@shared/types'
 
 interface Props {
@@ -93,6 +93,12 @@ function EditableRow(props: {
 }
 
 export default function Sidebar(props: Props): React.JSX.Element {
+  const [version, setVersion] = useState('')
+
+  useEffect(() => {
+    window.deck.getAppVersion().then(setVersion)
+  }, [])
+
   return (
     <aside className="sidebar">
       <div className="sidebar-brand">Virtual StreamDeck</div>
@@ -144,6 +150,7 @@ export default function Sidebar(props: Props): React.JSX.Element {
       <button className="sidebar-settings" onClick={props.onOpenSettings}>
         ⚙ 설정
       </button>
+      {version && <div className="sidebar-version">v{version}</div>}
     </aside>
   )
 }
