@@ -13,8 +13,8 @@ const api = {
     ipcRenderer.invoke('overlay:resizeForPage', cols, rows),
   previewOverlay: (config: AppConfig): Promise<void> => ipcRenderer.invoke('overlay:preview', config),
   stopOverlayPreview: (): Promise<void> => ipcRenderer.invoke('overlay:stopPreview'),
-  reportGridDrag: (size: { cellWidth: number; cellHeight: number }): Promise<void> =>
-    ipcRenderer.invoke('overlay:gridDrag', size),
+  downloadUpdate: (): Promise<void> => ipcRenderer.invoke('update:download'),
+  installUpdate: (): Promise<void> => ipcRenderer.invoke('update:install'),
   pickFile: (): Promise<string | null> => ipcRenderer.invoke('dialog:pickFile'),
   listRunningApps: (): Promise<RunningApp[]> => ipcRenderer.invoke('apps:listRunning'),
   pickImage: (): Promise<string | null> => ipcRenderer.invoke('dialog:pickImage'),
@@ -28,15 +28,25 @@ const api = {
     ipcRenderer.on('overlay:previewMode', listener)
     return () => ipcRenderer.removeListener('overlay:previewMode', listener)
   },
-  onPreviewResized: (cb: (size: { width: number; height: number }) => void): (() => void) => {
-    const listener = (_e: unknown, size: { width: number; height: number }): void => cb(size)
-    ipcRenderer.on('overlay:previewResized', listener)
-    return () => ipcRenderer.removeListener('overlay:previewResized', listener)
+  onUpdateAvailable: (cb: (version: string) => void): (() => void) => {
+    const listener = (_e: unknown, version: string): void => cb(version)
+    ipcRenderer.on('update:available', listener)
+    return () => ipcRenderer.removeListener('update:available', listener)
   },
-  onGridDragged: (cb: (size: { cellWidth: number; cellHeight: number }) => void): (() => void) => {
-    const listener = (_e: unknown, size: { cellWidth: number; cellHeight: number }): void => cb(size)
-    ipcRenderer.on('overlay:gridDragged', listener)
-    return () => ipcRenderer.removeListener('overlay:gridDragged', listener)
+  onUpdateNotAvailable: (cb: () => void): (() => void) => {
+    const listener = (): void => cb()
+    ipcRenderer.on('update:notAvailable', listener)
+    return () => ipcRenderer.removeListener('update:notAvailable', listener)
+  },
+  onUpdateError: (cb: (message: string) => void): (() => void) => {
+    const listener = (_e: unknown, message: string): void => cb(message)
+    ipcRenderer.on('update:error', listener)
+    return () => ipcRenderer.removeListener('update:error', listener)
+  },
+  onUpdateDownloaded: (cb: () => void): (() => void) => {
+    const listener = (): void => cb()
+    ipcRenderer.on('update:downloaded', listener)
+    return () => ipcRenderer.removeListener('update:downloaded', listener)
   }
 }
 

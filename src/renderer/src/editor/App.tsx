@@ -6,6 +6,7 @@ import Sidebar from './components/Sidebar'
 import DeckGrid from './components/DeckGrid'
 import ButtonModal from './components/ButtonModal'
 import SettingsModal from './components/SettingsModal'
+import UpdateModal from './components/UpdateModal'
 
 function newPage(name: string, cols: number, rows: number): DeckPage {
   return { id: crypto.randomUUID(), name, cols, rows, buttons: new Array(cols * rows).fill(null) }
@@ -92,6 +93,7 @@ export default function App(): React.JSX.Element {
     return (
       <div className="app-loading">
         <span>불러오는 중…</span>
+        <UpdateModal />
       </div>
     )
   }
@@ -319,6 +321,8 @@ export default function App(): React.JSX.Element {
           onSave={saveSettings}
         />
       )}
+
+      <UpdateModal />
     </div>
   )
 }

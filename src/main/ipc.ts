@@ -1,4 +1,5 @@
 import { ipcMain, dialog, app, BrowserWindow } from 'electron'
+import { autoUpdater } from 'electron-updater'
 import { readFileSync } from 'fs'
 import { extname } from 'path'
 import { loadConfig, saveConfig } from './config'
@@ -8,8 +9,7 @@ import {
   getExistingOverlayWindow,
   resizeOverlayForPage,
   previewOverlay,
-  stopOverlayPreview,
-  reportGridDrag
+  stopOverlayPreview
 } from './windows'
 import { listRunningApps } from './apps'
 import { AppConfig, ButtonAction } from '../shared/types'
@@ -80,8 +80,12 @@ export function registerIpcHandlers(deps: IpcDeps): void {
     stopOverlayPreview()
   })
 
-  ipcMain.handle('overlay:gridDrag', (_e, size: { cellWidth: number; cellHeight: number }) => {
-    reportGridDrag(size.cellWidth, size.cellHeight)
+  ipcMain.handle('update:download', () => {
+    autoUpdater.downloadUpdate()
+  })
+
+  ipcMain.handle('update:install', () => {
+    autoUpdater.quitAndInstall()
   })
 
   ipcMain.handle('apps:listRunning', () => listRunningApps())

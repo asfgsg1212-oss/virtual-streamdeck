@@ -16,9 +16,6 @@ function sendWhenReady(win: BrowserWindow, channel: string, ...args: unknown[]):
 
 let overlayWin: BrowserWindow | null = null
 let editorWin: BrowserWindow | null = null
-// The config previewOverlay() was last called with, so reportGridDrag() can work out the box
-// size for a live cellWidth/cellHeight drag without the renderer having to resend everything.
-let lastPreviewConfig: AppConfig | null = null
 
 function createOverlayWindow(): BrowserWindow {
   const win = new BrowserWindow({
@@ -93,12 +90,9 @@ export function toggleOverlay(): void {
   }
 
   stopPreviewFollow()
-  stopPreviewResizeWatch(win)
-  // In case this window was left in settings-preview mode (child of the editor, resizable,
-  // not always-on-top) — the real hotkey popup always gets the normal standalone behavior.
+  // In case this window was left in settings-preview mode (child of the editor, not
+  // always-on-top) — the real hotkey popup always gets the normal standalone behavior.
   win.setParentWindow(null)
-  win.setResizable(false)
-  win.setMovable(false)
   win.setAlwaysOnTop(true, 'screen-saver')
   sendWhenReady(win, 'overlay:previewMode', false)
   captureFocus()
@@ -141,39 +135,17 @@ function boundsBesideEditor(width: number, height: number): { x: number; y: numb
   return boundsAround(area.x + area.width / 2, area.y + area.height / 2, width, height)
 }
 
-/** Re-sizes around the window's own current center — no relation to the editor's position.
- *  Used for every preview resize except the very first, so nothing ever fights a user drag by
- *  snapping the box back to "beside the editor." */
-function resizeInPlace(win: BrowserWindow, width: number, height: number): void {
-  const current = win.getBounds()
-  const centerX = current.x + current.width / 2
-  const centerY = current.y + current.height / 2
-  setPreviewBounds(win, boundsAround(centerX, centerY, width, height))
-}
-
 let previewFollow: { move: () => void; minimize: () => void; restore: () => void } | null = null
-// Set around every setBounds() we make ourselves while previewing, so the 'resize' watcher below
-// can tell "we just repositioned/resized this" apart from "the user actually dragged an edge."
-let suppressPreviewBoundsEvents = false
 
-function setPreviewBounds(win: BrowserWindow, bounds: { x: number; y: number; width: number; height: number }): void {
-  suppressPreviewBoundsEvents = true
-  win.setBounds(bounds)
-  setImmediate(() => {
-    suppressPreviewBoundsEvents = false
-  })
-}
-
-/** While previewing, keep the overlay stuck beside the editor window as it's dragged around
- *  (unless the user has since dragged the overlay itself — see previewResize below), and
- *  hide/show it in step with the editor being minimized/restored. */
+/** While previewing, keep the overlay stuck beside the editor window as it's dragged around,
+ *  and hide/show it in step with the editor being minimized/restored. */
 function startPreviewFollow(): void {
   if (previewFollow || !editorWin || editorWin.isDestroyed()) return
   const move = (): void => {
     const win = getExistingOverlayWindow()
     if (!win || !win.isVisible()) return
     const bounds = win.getBounds()
-    setPreviewBounds(win, boundsBesideEditor(bounds.width, bounds.height))
+    win.setBounds(boundsBesideEditor(bounds.width, bounds.height))
   }
   const minimize = (): void => {
     getExistingOverlayWindow()?.hide()
@@ -182,7 +154,7 @@ function startPreviewFollow(): void {
     const win = getExistingOverlayWindow()
     if (!win) return
     const bounds = win.getBounds()
-    setPreviewBounds(win, boundsBesideEditor(bounds.width, bounds.height))
+    win.setBounds(boundsBesideEditor(bounds.width, bounds.height))
     win.showInactive()
   }
   editorWin.on('move', move)
@@ -200,36 +172,15 @@ function stopPreviewFollow(): void {
   previewFollow = null
 }
 
-let previewResizeListener: (() => void) | null = null
-
-/** While previewing, dragging the overlay's own edge reports the new size back to Settings
- *  (as cellWidth/cellHeight, worked out from the box) instead of just resizing visually. */
-function startPreviewResizeWatch(win: BrowserWindow): void {
-  if (previewResizeListener) return
-  previewResizeListener = (): void => {
-    if (suppressPreviewBoundsEvents) return
-    const editor = getEditorWindow()
-    if (!editor || editor.isDestroyed()) return
-    const bounds = win.getBounds()
-    editor.webContents.send('overlay:previewResized', { width: bounds.width, height: bounds.height })
-  }
-  win.on('resize', previewResizeListener)
-}
-
-function stopPreviewResizeWatch(win: BrowserWindow): void {
-  if (previewResizeListener) {
-    win.removeListener('resize', previewResizeListener)
-    previewResizeListener = null
-  }
-}
-
 /**
  * Shows the real overlay window as a live settings preview: same window, same rendering,
  * so it can never look different from the popup you actually get from the hotkey. Safe to
  * call repeatedly (e.g. on every settings-field change) — it just re-sizes/re-syncs in place.
  * Stays pinned beside the editor window, following it as it moves/minimizes/restores. It's a
  * child of the editor window (not always-on-top) so the two behave as one thing: minimize, hide
- * behind other apps, and close together, and the user can freely drag/resize the box itself.
+ * behind other apps, and close together. Purely visual — clicks pass through instead of firing
+ * real actions, and it's not resizable/movable by the user (that was tried and was buggier than
+ * it was worth; size/position are set from the fields only).
  */
 export function previewOverlay(config: AppConfig): void {
   const win = getOverlayWindow()
@@ -241,17 +192,9 @@ export function previewOverlay(config: AppConfig): void {
   const wasVisible = win.isVisible()
   if (editorWin && !editorWin.isDestroyed()) win.setParentWindow(editorWin)
   win.setAlwaysOnTop(false)
-  win.setResizable(true)
-  win.setMovable(true)
-  win.setIgnoreMouseEvents(false)
-  // Only the first time this session does the box jump to "beside the editor" — every later
-  // resize (a field edit, or feedback from the user dragging the box itself) just resizes it
-  // around wherever it currently is, so a drag is never fought back into that fixed spot.
-  if (wasVisible) resizeInPlace(win, width, height)
-  else setPreviewBounds(win, boundsBesideEditor(width, height))
+  win.setIgnoreMouseEvents(true)
+  win.setBounds(boundsBesideEditor(width, height))
   startPreviewFollow()
-  startPreviewResizeWatch(win)
-  lastPreviewConfig = config
 
   sendWhenReady(win, 'config:updated', config)
   sendWhenReady(win, 'overlay:previewMode', true)
@@ -260,44 +203,15 @@ export function previewOverlay(config: AppConfig): void {
   if (!wasVisible && !editorMinimized) win.showInactive()
 }
 
-/**
- * Called (repeatedly, live) while the user drags the in-page grid-size handle during preview.
- * The window's outer edge controls the close-zone margin (see the 'resize' watcher above); this
- * is the other, independent control — it keeps the margin fixed and grows/shrinks just the grid,
- * resizing the window to match and reporting the new cellWidth/cellHeight back to Settings.
- */
-export function reportGridDrag(cellWidth: number, cellHeight: number): void {
-  const win = getExistingOverlayWindow()
-  if (!win || !lastPreviewConfig) return
-  const config: AppConfig = {
-    ...lastPreviewConfig,
-    gridStyle: { ...lastPreviewConfig.gridStyle, cellWidth, cellHeight }
-  }
-  const active = findActive(config)
-  const cols = active?.page.cols ?? DEFAULT_COLS
-  const rows = active?.page.rows ?? DEFAULT_ROWS
-  const { width, height } = overlaySize(cols, rows, config.gridStyle, config.showPageDots, config.closeZone)
-  resizeInPlace(win, width, height)
-
-  const editor = getEditorWindow()
-  if (editor && !editor.isDestroyed()) {
-    editor.webContents.send('overlay:gridDragged', { cellWidth, cellHeight })
-  }
-}
-
 /** Ends a settings-preview session: stop following the editor window, restore normal
  *  standalone-popup behavior, and hide the overlay. */
 export function stopOverlayPreview(): void {
   stopPreviewFollow()
   const win = getExistingOverlayWindow()
   if (win) {
-    stopPreviewResizeWatch(win)
     win.setParentWindow(null)
-    win.setResizable(false)
-    win.setMovable(false)
     win.setAlwaysOnTop(true, 'screen-saver')
   }
-  lastPreviewConfig = null
   hideOverlay()
 }
 

@@ -3,7 +3,7 @@ import { autoUpdater } from 'electron-updater'
 import { join } from 'path'
 import { is } from './env'
 import { loadConfig, saveConfig } from './config'
-import { createEditorWindow, toggleOverlay } from './windows'
+import { createEditorWindow, getEditorWindow, toggleOverlay } from './windows'
 import { registerIpcHandlers } from './ipc'
 
 let tray: Tray | null = null
@@ -13,47 +13,30 @@ autoUpdater.autoDownload = false
 
 let manualUpdateCheck = false
 
+// Native dialog.showMessageBox is unstyled OS chrome that clashes with the app's own dark theme,
+// so update prompts are shown as a themed modal in the editor window instead (see App.tsx).
+function notifyEditor(channel: string, ...args: unknown[]): void {
+  createEditorWindow()
+  getEditorWindow()?.webContents.send(channel, ...args)
+}
+
 autoUpdater.on('update-available', (info) => {
-  dialog
-    .showMessageBox({
-      type: 'question',
-      buttons: ['업데이트', '나중에'],
-      defaultId: 0,
-      cancelId: 1,
-      title: '업데이트',
-      message: `새 버전(${info.version})이 나왔습니다. 업데이트 하시겠습니까?`
-    })
-    .then((result) => {
-      if (result.response === 0) autoUpdater.downloadUpdate()
-    })
+  notifyEditor('update:available', info.version)
   manualUpdateCheck = false
 })
 
 autoUpdater.on('update-not-available', () => {
-  if (manualUpdateCheck) {
-    dialog.showMessageBox({ title: '업데이트 확인', message: '이미 최신 버전이에요.' })
-  }
+  if (manualUpdateCheck) notifyEditor('update:notAvailable')
   manualUpdateCheck = false
 })
 
 autoUpdater.on('error', (err) => {
-  if (manualUpdateCheck) dialog.showErrorBox('업데이트 확인 실패', String(err))
+  if (manualUpdateCheck) notifyEditor('update:error', String(err))
   manualUpdateCheck = false
 })
 
 autoUpdater.on('update-downloaded', () => {
-  dialog
-    .showMessageBox({
-      type: 'info',
-      buttons: ['지금 재시작', '나중에'],
-      defaultId: 0,
-      cancelId: 1,
-      title: '업데이트 준비 완료',
-      message: '새 버전을 받았어요. 지금 재시작해서 적용할까요?'
-    })
-    .then((result) => {
-      if (result.response === 0) autoUpdater.quitAndInstall()
-    })
+  notifyEditor('update:downloaded')
 })
 
 function checkForUpdates(manual: boolean): void {
