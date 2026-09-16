@@ -1,0 +1,23 @@
+appId: com.asfgsg1212.virtualstreamdeck
+productName: Virtual StreamDeck
+directories:
+  output: dist
+  buildResources: resources
+files:
+  - out/**/*
+  - resources/icon.png
+asarUnpack:
+  - '**/*.node'
+  - node_modules/@nut-tree-fork/**
+win:
+  target: nsis
+  icon: resources/icon.png
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+publish:
+  provider: github
+  owner: asfgsg1212-oss
+  repo: virtual-streamdeck
