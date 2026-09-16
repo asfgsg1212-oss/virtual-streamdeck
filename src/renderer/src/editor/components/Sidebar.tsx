@@ -64,6 +64,18 @@ function EditableRow(props: {
           {props.name}
         </span>
       )}
+      {!editing && (
+        <button
+          className="list-row-edit"
+          title="이름 수정"
+          onClick={(e) => {
+            e.stopPropagation()
+            setEditing(true)
+          }}
+        >
+          ✎
+        </button>
+      )}
       {props.deletable && (
         <button
           className="list-row-delete"

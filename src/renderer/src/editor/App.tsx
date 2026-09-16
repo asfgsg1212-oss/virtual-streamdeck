@@ -11,6 +11,15 @@ function newPage(name: string, cols: number, rows: number): DeckPage {
   return { id: crypto.randomUUID(), name, cols, rows, buttons: new Array(cols * rows).fill(null) }
 }
 
+/** "페이지 N" for the lowest N not already used by an existing page, so deleting/renaming pages
+ *  doesn't push later names ever upward. */
+function nextPageName(existing: DeckPage[]): string {
+  const used = new Set(existing.map((p) => p.name))
+  let n = 1
+  while (used.has(`페이지 ${n}`)) n++
+  return `페이지 ${n}`
+}
+
 function newProfile(name: string, cols: number, rows: number): Profile {
   const page = newPage('페이지 1', cols, rows)
   return { id: crypto.randomUUID(), name, pages: [page], activePageId: page.id }
@@ -132,7 +141,7 @@ export default function App(): React.JSX.Element {
   }
 
   const addPage = (): void => {
-    const p = newPage(`페이지 ${profile.pages.length + 1}`, page.cols, page.rows)
+    const p = newPage(nextPageName(profile.pages), page.cols, page.rows)
     setSelectedPageId(p.id)
     setFolderPath([])
     commit({

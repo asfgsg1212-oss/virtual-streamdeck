@@ -135,7 +135,8 @@ body,
   width: 100%;
 }
 
-.list-row-delete {
+.list-row-delete,
+.list-row-edit {
   background: none;
   border: none;
   color: var(--muted);
@@ -146,11 +147,18 @@ body,
   opacity: 0;
   transition: opacity 0.1s ease;
 }
-.list-row:hover .list-row-delete {
+.list-row-edit {
+  font-size: 12px;
+}
+.list-row:hover .list-row-delete,
+.list-row:hover .list-row-edit {
   opacity: 1;
 }
 .list-row-delete:hover {
   color: var(--danger);
+}
+.list-row-edit:hover {
+  color: var(--accent);
 }
 
 .sidebar-settings {
