@@ -30,7 +30,8 @@ function defaultConfig(): AppConfig {
     autoLaunch: false,
     gridStyle: { ...DEFAULT_GRID_STYLE },
     showPageDots: true,
-    closeZone: { ...DEFAULT_CLOSE_ZONE }
+    closeZone: { ...DEFAULT_CLOSE_ZONE },
+    pinned: false
   }
 }
 

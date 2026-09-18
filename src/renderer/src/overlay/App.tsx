@@ -86,11 +86,15 @@ export default function App(): React.JSX.Element {
         }
         return
       }
-      // Hide first and wait for it to land, so focus returns to the target app
-      // before main sends the actual key/mouse input.
-      window.deck.hideOverlay().then(() => window.deck.executeAction(btn.action!))
+      // Pinned mode leaves the deck open permanently; otherwise hide first and wait for it to
+      // land before main sends the actual key/mouse input.
+      if (config?.pinned) {
+        window.deck.executeAction(btn.action!)
+      } else {
+        window.deck.hideOverlay().then(() => window.deck.executeAction(btn.action!))
+      }
     },
-    [isPreview, pageId, goToPage, enterFolder]
+    [isPreview, pageId, goToPage, enterFolder, config?.pinned]
   )
 
   if (!config) return <div className="overlay-shell" />
@@ -102,19 +106,20 @@ export default function App(): React.JSX.Element {
   const style = config.gridStyle
   const inFolder = folderPath.length > 0
   const zone = config.closeZone
+  const pinned = config.pinned
 
   return (
     <div
       className="overlay-shell"
-      onMouseLeave={isPreview ? undefined : close}
+      onMouseLeave={isPreview || pinned ? undefined : close}
       style={
         {
-          '--zone-margin': `${zone.margin}px`,
+          '--zone-margin': `${pinned ? 0 : zone.margin}px`,
           '--zone-opacity': zone.opacity
         } as React.CSSProperties
       }
     >
-      <div className={`overlay-zone overlay-zone--${zone.visual}`} />
+      {!pinned && <div className={`overlay-zone overlay-zone--${zone.visual}`} />}
       <div className="overlay-content">
         <div className="overlay-root">
           <GridCells

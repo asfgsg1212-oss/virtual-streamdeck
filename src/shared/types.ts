@@ -82,6 +82,9 @@ export interface AppConfig {
   gridStyle: GridStyle
   showPageDots: boolean
   closeZone: CloseZoneStyle
+  /** Always-on mode: the deck stays open — pressing a button doesn't hide it, and the mouse
+   *  hover-out close-zone is disabled entirely. */
+  pinned: boolean
 }
 
 export interface RunningApp {

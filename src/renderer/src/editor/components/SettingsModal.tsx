@@ -65,6 +65,7 @@ export default function SettingsModal(props: Props): React.JSX.Element {
   const [hotkey, setHotkey] = useState(props.config.hotkey)
   const [autoLaunch, setAutoLaunch] = useState(props.config.autoLaunch)
   const [showPageDots, setShowPageDots] = useState(props.config.showPageDots)
+  const [pinned, setPinned] = useState(props.config.pinned)
   const [gridStyle, setGridStyle] = useState<GridStyle>(props.config.gridStyle)
   const [closeZone, setCloseZone] = useState<CloseZoneStyle>(props.config.closeZone)
 
@@ -72,8 +73,8 @@ export default function SettingsModal(props: Props): React.JSX.Element {
   // editor and keep it in sync as these fields change, so there is no separate "fake"
   // preview that could ever look different from the real thing.
   useEffect(() => {
-    window.deck.previewOverlay({ ...props.config, gridStyle, showPageDots, closeZone })
-  }, [gridStyle, showPageDots, closeZone])
+    window.deck.previewOverlay({ ...props.config, gridStyle, showPageDots, closeZone, pinned })
+  }, [gridStyle, showPageDots, closeZone, pinned])
 
   useEffect(() => {
     return () => {
@@ -96,7 +97,7 @@ export default function SettingsModal(props: Props): React.JSX.Element {
     })
 
   const save = (): void => {
-    props.onSave({ hotkey, autoLaunch, showPageDots, gridStyle, closeZone })
+    props.onSave({ hotkey, autoLaunch, showPageDots, gridStyle, closeZone, pinned })
     window.deck.stopOverlayPreview()
     props.onClose()
   }
@@ -154,6 +155,16 @@ export default function SettingsModal(props: Props): React.JSX.Element {
             type="checkbox"
             checked={showPageDots}
             onChange={(e) => setShowPageDots(e.target.checked)}
+          />
+        </div>
+
+        <div className="field field--row">
+          <label htmlFor="pinned">상시 고정 모드 (버튼을 눌러도 안 닫히고, 화면에 계속 떠있어요)</label>
+          <input
+            id="pinned"
+            type="checkbox"
+            checked={pinned}
+            onChange={(e) => setPinned(e.target.checked)}
           />
         </div>
 
@@ -238,11 +249,12 @@ export default function SettingsModal(props: Props): React.JSX.Element {
           </button>
         </div>
 
-        <div className="field">
+        <div className="field" style={pinned ? { opacity: 0.5, pointerEvents: 'none' } : undefined}>
           <label>바깥 클릭 대신 — 마우스가 벗어나면 자동으로 닫히는 범위</label>
           <p className="field-hint">
-            오버레이 밖으로 마우스가 나가면 자동으로 닫혀요. 이 범위 안에서는 계속 열려있어요.
-            지금 옆에 뜬 실제 미리보기에서 범위가 그대로 보여요.
+            {pinned
+              ? '상시 고정 모드에서는 자동으로 닫히지 않아서 이 설정이 적용되지 않아요.'
+              : '오버레이 밖으로 마우스가 나가면 자동으로 닫혀요. 이 범위 안에서는 계속 열려있어요. 지금 옆에 뜬 실제 미리보기에서 범위가 그대로 보여요.'}
           </p>
           <div className="grid-style-fields">
             <label className="grid-style-field">

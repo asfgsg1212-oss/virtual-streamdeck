@@ -5,7 +5,13 @@ import { overlaySize, DEFAULT_COLS, DEFAULT_ROWS } from '../shared/constants'
 import { captureFocus } from './actions'
 import { loadConfig } from './config'
 import { findActive } from '../shared/selectors'
-import type { AppConfig } from '../shared/types'
+import type { AppConfig, CloseZoneStyle } from '../shared/types'
+
+/** Pinned mode never auto-closes on mouse-out, so the hover margin has nothing to do — skip the
+ *  extra window space it would otherwise reserve. */
+function closeZoneFor(config: AppConfig): CloseZoneStyle {
+  return config.pinned ? { ...config.closeZone, margin: 0 } : config.closeZone
+}
 
 /** Sends once the page has actually loaded, instead of dropping the message on the floor. */
 function sendWhenReady(win: BrowserWindow, channel: string, ...args: unknown[]): void {
@@ -101,7 +107,7 @@ export function toggleOverlay(): void {
   const active = findActive(config)
   const cols = active?.page.cols ?? DEFAULT_COLS
   const rows = active?.page.rows ?? DEFAULT_ROWS
-  const { width, height } = overlaySize(cols, rows, config.gridStyle, config.showPageDots, config.closeZone)
+  const { width, height } = overlaySize(cols, rows, config.gridStyle, config.showPageDots, closeZoneFor(config))
   const cursor = screen.getCursorScreenPoint()
 
   win.setBounds(boundsAround(cursor.x, cursor.y, width, height))
@@ -118,7 +124,7 @@ export function resizeOverlayForPage(cols: number, rows: number): void {
   const win = getExistingOverlayWindow()
   if (!win) return
   const config = loadConfig()
-  const { width, height } = overlaySize(cols, rows, config.gridStyle, config.showPageDots, config.closeZone)
+  const { width, height } = overlaySize(cols, rows, config.gridStyle, config.showPageDots, closeZoneFor(config))
   const current = win.getBounds()
   const centerX = current.x + current.width / 2
   const centerY = current.y + current.height / 2
@@ -187,7 +193,7 @@ export function previewOverlay(config: AppConfig): void {
   const active = findActive(config)
   const cols = active?.page.cols ?? DEFAULT_COLS
   const rows = active?.page.rows ?? DEFAULT_ROWS
-  const { width, height } = overlaySize(cols, rows, config.gridStyle, config.showPageDots, config.closeZone)
+  const { width, height } = overlaySize(cols, rows, config.gridStyle, config.showPageDots, closeZoneFor(config))
 
   const wasVisible = win.isVisible()
   if (editorWin && !editorWin.isDestroyed()) win.setParentWindow(editorWin)
