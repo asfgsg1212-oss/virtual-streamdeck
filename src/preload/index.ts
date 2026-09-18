@@ -18,6 +18,8 @@ const api = {
   installUpdate: (): Promise<void> => ipcRenderer.invoke('update:install'),
   pickFile: (): Promise<string | null> => ipcRenderer.invoke('dialog:pickFile'),
   listRunningApps: (): Promise<RunningApp[]> => ipcRenderer.invoke('apps:listRunning'),
+  listAudioApps: (): Promise<string[]> => ipcRenderer.invoke('apps:listAudio'),
+  getFileIcon: (filePath: string): Promise<string | null> => ipcRenderer.invoke('icon:getFileIcon', filePath),
   pickImage: (): Promise<string | null> => ipcRenderer.invoke('dialog:pickImage'),
   onConfigUpdated: (cb: (config: AppConfig) => void): (() => void) => {
     const listener = (_e: unknown, config: AppConfig): void => cb(config)

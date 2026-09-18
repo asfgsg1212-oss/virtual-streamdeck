@@ -14,6 +14,8 @@ export type MediaKey = 'mute' | 'volumeUp' | 'volumeDown' | 'playPause' | 'nextT
 export interface MacroStep {
   type: Exclude<ActionType, 'macro' | 'switchPage' | 'folder'> | 'wait'
   value: string
+  /** Only for type 'media': target a specific app instead of the global media key. */
+  targetApp?: string
 }
 
 export interface ButtonAction {
@@ -26,6 +28,9 @@ export interface ButtonAction {
   paths?: string[]
   /** Only for type 'hotkey' or 'url': multiple combos/addresses that all fire when pressed. */
   values?: string[]
+  /** Only for type 'media': process-name match to target one app's session instead of the
+   *  system-wide media key (e.g. "spotify", "chrome"). Empty/undefined = global, the old behavior. */
+  targetApp?: string
 }
 
 export type IconMode = 'iconLabel' | 'fill'

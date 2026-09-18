@@ -379,6 +379,27 @@ textarea.field-input {
   gap: 8px;
 }
 
+.icon-suggestion {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 6px 10px;
+  background: var(--surface-2);
+  border: 1px dashed var(--accent);
+  border-radius: 8px;
+  color: var(--accent);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.icon-suggestion img {
+  width: 18px;
+  height: 18px;
+}
+.icon-suggestion:hover {
+  background: var(--surface);
+}
+
 .icon-mode-toggle {
   display: flex;
   gap: 6px;

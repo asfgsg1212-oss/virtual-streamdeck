@@ -1,6 +1,7 @@
 import { shell, screen, clipboard } from 'electron'
 import { keyboard, mouse, Key, Button, Point } from '@nut-tree-fork/nut-js'
 import { ButtonAction, MediaKey } from '../shared/types'
+import { sendTargetedMediaCommand } from './media'
 
 keyboard.config.autoDelayMs = 0
 
@@ -127,7 +128,7 @@ function normalizeUrl(value: string): string {
   return /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(trimmed) ? trimmed : `https://${trimmed}`
 }
 
-async function runSingle(type: string, value: string): Promise<void> {
+async function runSingle(type: string, value: string, targetApp?: string): Promise<void> {
   switch (type) {
     case 'hotkey':
       await pressCombo(parseHotkey(value))
@@ -136,6 +137,10 @@ async function runSingle(type: string, value: string): Promise<void> {
       await typeViaClipboard(value)
       break
     case 'media': {
+      if (targetApp) {
+        await sendTargetedMediaCommand(value as MediaKey, targetApp)
+        break
+      }
       const key = MEDIA_KEY_MAP[value as MediaKey]
       if (key !== undefined) await pressCombo([key])
       break
@@ -163,7 +168,7 @@ export async function executeAction(action: ButtonAction): Promise<void> {
 
   if (action.type === 'macro' && action.steps) {
     for (const step of action.steps) {
-      await runSingle(step.type, step.value)
+      await runSingle(step.type, step.value, step.targetApp)
     }
     return
   }
@@ -179,5 +184,5 @@ export async function executeAction(action: ButtonAction): Promise<void> {
     for (const v of action.values) await shell.openExternal(normalizeUrl(v))
     return
   }
-  await runSingle(action.type, action.value)
+  await runSingle(action.type, action.value, action.targetApp)
 }

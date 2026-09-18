@@ -14,6 +14,7 @@ import {
   syncCloseZoneIfOpen
 } from './windows'
 import { listRunningApps } from './apps'
+import { listAudioApps } from './media'
 import { AppConfig, ButtonAction } from '../shared/types'
 
 interface IpcDeps {
@@ -110,6 +111,17 @@ export function registerIpcHandlers(deps: IpcDeps): void {
   })
 
   ipcMain.handle('apps:listRunning', () => listRunningApps())
+
+  ipcMain.handle('apps:listAudio', () => listAudioApps())
+
+  ipcMain.handle('icon:getFileIcon', async (_e, filePath: string) => {
+    try {
+      const img = await app.getFileIcon(filePath, { size: 'normal' })
+      return img.toDataURL()
+    } catch {
+      return null
+    }
+  })
 
   ipcMain.handle('dialog:pickFile', async () => {
     const result = await openDialog({

@@ -10,6 +10,7 @@ import type {
   RunningApp
 } from '@shared/types'
 import { DEFAULT_COLS, DEFAULT_ROWS } from '@shared/constants'
+import { suggestIcon } from '@renderer/shared/iconSuggestions'
 
 interface Props {
   button: DeckButton | null
@@ -118,7 +119,9 @@ function HotkeyField(props: { value: string; onChange: (v: string) => void }): R
   )
 }
 
-function ProgramPickerPanel(props: { onPick: (path: string) => void }): React.JSX.Element {
+function ProgramPickerPanel(props: {
+  onPick: (path: string, icon: string | null) => void
+}): React.JSX.Element {
   const [apps, setApps] = useState<RunningApp[] | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -137,7 +140,9 @@ function ProgramPickerPanel(props: { onPick: (path: string) => void }): React.JS
 
   const browse = async (): Promise<void> => {
     const result = await window.deck.pickFile()
-    if (result) props.onPick(result)
+    if (!result) return
+    const icon = await window.deck.getFileIcon(result)
+    props.onPick(result, icon)
   }
 
   return (
@@ -154,7 +159,7 @@ function ProgramPickerPanel(props: { onPick: (path: string) => void }): React.JS
           type="button"
           key={a.path}
           className="program-picker-item"
-          onClick={() => props.onPick(a.path)}
+          onClick={() => props.onPick(a.path, a.icon)}
         >
           {a.icon ? (
             <img src={a.icon} alt="" />
@@ -169,7 +174,11 @@ function ProgramPickerPanel(props: { onPick: (path: string) => void }): React.JS
   )
 }
 
-function ProgramPicker(props: { value: string; onChange: (v: string) => void }): React.JSX.Element {
+function ProgramPicker(props: {
+  value: string
+  onChange: (v: string) => void
+  onIconHint?: (icon: string) => void
+}): React.JSX.Element {
   const [open, setOpen] = useState(false)
   return (
     <div className="field-col">
@@ -186,8 +195,9 @@ function ProgramPicker(props: { value: string; onChange: (v: string) => void }):
       </div>
       {open && (
         <ProgramPickerPanel
-          onPick={(p) => {
+          onPick={(p, icon) => {
             props.onChange(p)
+            if (icon) props.onIconHint?.(icon)
             setOpen(false)
           }}
         />
@@ -196,7 +206,11 @@ function ProgramPicker(props: { value: string; onChange: (v: string) => void }):
   )
 }
 
-function LaunchList(props: { paths: string[]; onChange: (paths: string[]) => void }): React.JSX.Element {
+function LaunchList(props: {
+  paths: string[]
+  onChange: (paths: string[]) => void
+  onIconHint?: (icon: string) => void
+}): React.JSX.Element {
   const [pickerOpen, setPickerOpen] = useState(false)
 
   const updateAt = (i: number, v: string): void =>
@@ -223,8 +237,9 @@ function LaunchList(props: { paths: string[]; onChange: (paths: string[]) => voi
       </button>
       {pickerOpen && (
         <ProgramPickerPanel
-          onPick={(p) => {
+          onPick={(p, icon) => {
             props.onChange([...props.paths, p])
+            if (icon) props.onIconHint?.(icon)
             setPickerOpen(false)
           }}
         />
@@ -261,6 +276,37 @@ function ValueList(props: {
       <button type="button" className="btn-secondary" onClick={add}>
         + 추가
       </button>
+    </div>
+  )
+}
+
+/** Optional target for a 'media' action: leave blank for the global media key, or pick a specific
+ *  app so this button only affects that app's playback/volume instead of whatever's active. */
+function MediaTargetField(props: { value: string; onChange: (v: string) => void }): React.JSX.Element {
+  const [apps, setApps] = useState<string[] | null>(null)
+
+  useEffect(() => {
+    window.deck.listAudioApps().then(setApps)
+  }, [])
+
+  return (
+    <div className="field-col">
+      <select
+        className="field-input"
+        value={props.value}
+        onChange={(e) => props.onChange(e.target.value)}
+      >
+        <option value="">전체 (기본 — 빠름)</option>
+        {apps?.map((a) => (
+          <option key={a} value={a}>
+            {a}
+          </option>
+        ))}
+      </select>
+      <p className="field-hint">
+        특정 프로그램을 고르면 그 프로그램의 소리/재생만 조절해요 (전체보다 조금 느려요). 목록에
+        없으면 그 프로그램이 소리를 내고 있을 때 이 창을 다시 열어보세요.
+      </p>
     </div>
   )
 }
@@ -392,11 +438,16 @@ export default function ButtonModal(props: Props): React.JSX.Element {
     if (a.values?.length) return a.values
     return [a.value ?? '']
   })
+  const [mediaTargetApp, setMediaTargetApp] = useState<string>(
+    existing?.action?.type === 'media' ? (existing.action.targetApp ?? '') : ''
+  )
 
   const pickImage = async (): Promise<void> => {
     const result = await window.deck.pickImage()
     if (result) setIcon(result)
   }
+
+  const suggestedIcon = suggestIcon(label)
 
   const buildButton = (): DeckButton => {
     const trimmedLabel = label.trim() || '버튼'
@@ -414,6 +465,8 @@ export default function ButtonModal(props: Props): React.JSX.Element {
     } else if (actionType === 'url') {
       const values = urlValues.map((v) => v.trim()).filter(Boolean)
       action = { type: 'url', value: values[0] ?? '', values }
+    } else if (actionType === 'media') {
+      action = { type: 'media', value: actionValue, targetApp: mediaTargetApp || undefined }
     } else {
       action = { type: actionType, value: actionValue }
     }
@@ -484,6 +537,16 @@ export default function ButtonModal(props: Props): React.JSX.Element {
               title="아이콘이 없을 때 배경색"
             />
           </div>
+          {suggestedIcon && suggestedIcon !== icon && (
+            <button
+              type="button"
+              className="icon-suggestion"
+              onClick={() => setIcon(suggestedIcon)}
+            >
+              <img src={suggestedIcon} alt="" />
+              라벨로 찾은 아이콘 적용하기
+            </button>
+          )}
           <div className="icon-mode-toggle">
             <button
               type="button"
@@ -551,6 +614,12 @@ export default function ButtonModal(props: Props): React.JSX.Element {
                       onChange={(v) => updateStep(i, { value: v })}
                       otherPages={props.otherPages}
                     />
+                    {step.type === 'media' && (
+                      <MediaTargetField
+                        value={step.targetApp ?? ''}
+                        onChange={(v) => updateStep(i, { targetApp: v || undefined })}
+                      />
+                    )}
                   </div>
                   <button type="button" className="list-row-delete" onClick={() => removeStep(i)}>
                     ×
@@ -565,7 +634,11 @@ export default function ButtonModal(props: Props): React.JSX.Element {
         ) : actionType === 'launch' ? (
           <div className="field">
             <label>실행할 프로그램 (한 번에 다 같이 켜져요)</label>
-            <LaunchList paths={launchPaths} onChange={setLaunchPaths} />
+            <LaunchList
+              paths={launchPaths}
+              onChange={setLaunchPaths}
+              onIconHint={(hint) => !icon && setIcon(hint)}
+            />
           </div>
         ) : actionType === 'hotkey' ? (
           <div className="field">
@@ -576,6 +649,12 @@ export default function ButtonModal(props: Props): React.JSX.Element {
           <div className="field">
             <label>열 주소 (한 번에 다 같이 열려요)</label>
             <ValueList type="url" values={urlValues} onChange={setUrlValues} />
+          </div>
+        ) : actionType === 'media' ? (
+          <div className="field">
+            <label>값</label>
+            <ValueField type="media" value={actionValue} onChange={setActionValue} otherPages={[]} />
+            <MediaTargetField value={mediaTargetApp} onChange={setMediaTargetApp} />
           </div>
         ) : (
           <div className="field">
