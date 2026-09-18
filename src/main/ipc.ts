@@ -10,7 +10,8 @@ import {
   getEditorWindow,
   resizeOverlayForPage,
   previewOverlay,
-  stopOverlayPreview
+  stopOverlayPreview,
+  syncCloseZoneIfOpen
 } from './windows'
 import { listRunningApps } from './apps'
 import { AppConfig, ButtonAction } from '../shared/types'
@@ -53,6 +54,7 @@ export function registerIpcHandlers(deps: IpcDeps): void {
       app.setLoginItemSettings({ openAtLogin: config.autoLaunch })
     }
     deps.onTrayRefresh()
+    syncCloseZoneIfOpen(previous, config)
 
     // Push the fresh config to an already-open overlay so edits apply immediately,
     // without waiting for it to be closed/reopened.
@@ -86,9 +88,10 @@ export function registerIpcHandlers(deps: IpcDeps): void {
   // The overlay's own pin button flips this directly, without going through the editor's
   // Settings save flow — still the same persisted setting, just toggled from either side.
   ipcMain.handle('config:togglePinned', () => {
-    const config = loadConfig()
-    config.pinned = !config.pinned
+    const previous = loadConfig()
+    const config: AppConfig = { ...previous, pinned: !previous.pinned }
     saveConfig(config)
+    syncCloseZoneIfOpen(previous, config)
 
     const overlay = getExistingOverlayWindow()
     overlay?.setMovable(config.pinned)

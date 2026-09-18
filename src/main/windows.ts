@@ -120,6 +120,29 @@ export function toggleOverlay(): void {
   globalShortcut.register('Escape', () => hideOverlay())
 }
 
+/**
+ * If the real (non-preview) overlay is currently open, adjusts its window size to match a
+ * close-zone margin change — e.g. toggling pinned mode, which drops the margin to 0 — by growing
+ * or shrinking by exactly the margin delta on each side, around the window's current center.
+ * A plain recompute-from-cols/rows can't be used here: main doesn't know if the overlay is
+ * currently showing the top page or a folder drilled into (that navigation lives in the
+ * renderer), but the delta is the same either way since only the margin changed.
+ */
+export function syncCloseZoneIfOpen(previous: AppConfig, next: AppConfig): void {
+  const win = getExistingOverlayWindow()
+  if (!win || !win.isVisible() || win.getParentWindow()) return
+  const oldMargin = closeZoneFor(previous).margin
+  const newMargin = closeZoneFor(next).margin
+  if (oldMargin === newMargin) return
+  const delta = (newMargin - oldMargin) * 2
+  const current = win.getBounds()
+  const width = Math.max(1, current.width + delta)
+  const height = Math.max(1, current.height + delta)
+  const centerX = current.x + current.width / 2
+  const centerY = current.y + current.height / 2
+  win.setBounds(boundsAround(centerX, centerY, width, height))
+}
+
 /** Re-sizes the open overlay in place (keeping its current center) when an in-overlay page
  *  switch lands on a page with different grid dimensions. */
 export function resizeOverlayForPage(cols: number, rows: number): void {

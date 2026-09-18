@@ -1,6 +1,6 @@
 {
   "name": "virtual-streamdeck",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "description": "Virtual Stream Deck - onscreen macro pad triggered by a hotkey",
   "main": "./out/main/index.js",
   "author": "asfgsg1212",
