@@ -7,6 +7,7 @@ import { executeAction } from './actions'
 import {
   hideOverlay,
   getExistingOverlayWindow,
+  getEditorWindow,
   resizeOverlayForPage,
   previewOverlay,
   stopOverlayPreview
@@ -55,7 +56,9 @@ export function registerIpcHandlers(deps: IpcDeps): void {
 
     // Push the fresh config to an already-open overlay so edits apply immediately,
     // without waiting for it to be closed/reopened.
-    getExistingOverlayWindow()?.webContents.send('config:updated', config)
+    const overlay = getExistingOverlayWindow()
+    overlay?.setMovable(config.pinned)
+    overlay?.webContents.send('config:updated', config)
 
     return { hotkeyError }
   })
@@ -78,6 +81,21 @@ export function registerIpcHandlers(deps: IpcDeps): void {
 
   ipcMain.handle('overlay:stopPreview', () => {
     stopOverlayPreview()
+  })
+
+  // The overlay's own pin button flips this directly, without going through the editor's
+  // Settings save flow — still the same persisted setting, just toggled from either side.
+  ipcMain.handle('config:togglePinned', () => {
+    const config = loadConfig()
+    config.pinned = !config.pinned
+    saveConfig(config)
+
+    const overlay = getExistingOverlayWindow()
+    overlay?.setMovable(config.pinned)
+    overlay?.webContents.send('config:updated', config)
+    getEditorWindow()?.webContents.send('config:updated', config)
+
+    return config.pinned
   })
 
   ipcMain.handle('update:download', () => {

@@ -140,8 +140,27 @@ export default function App(): React.JSX.Element {
             </div>
           )}
           {inFolder && (
-            <button className="overlay-back" onClick={() => goBack(page)} title="뒤로">
+            <button
+              className="overlay-back"
+              style={pinned ? { left: 32 } : undefined}
+              onClick={() => goBack(page)}
+              title="뒤로"
+            >
               ←
+            </button>
+          )}
+          {pinned && (
+            <div className="overlay-drag-handle" title="드래그해서 위치 옮기기">
+              ☰
+            </div>
+          )}
+          {config.showPinButton && (
+            <button
+              className={`overlay-pin ${pinned ? 'is-active' : ''}`}
+              onClick={() => window.deck.togglePinned()}
+              title={pinned ? '고정 해제' : '상시 고정'}
+            >
+              📌
             </button>
           )}
         </div>

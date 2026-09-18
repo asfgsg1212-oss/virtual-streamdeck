@@ -85,6 +85,9 @@ export interface AppConfig {
   /** Always-on mode: the deck stays open — pressing a button doesn't hide it, and the mouse
    *  hover-out close-zone is disabled entirely. */
   pinned: boolean
+  /** Shows a pin toggle in the overlay's own top-right corner, so pinned can be flipped without
+   *  opening Settings. */
+  showPinButton: boolean
 }
 
 export interface RunningApp {

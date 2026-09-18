@@ -13,6 +13,7 @@ const api = {
     ipcRenderer.invoke('overlay:resizeForPage', cols, rows),
   previewOverlay: (config: AppConfig): Promise<void> => ipcRenderer.invoke('overlay:preview', config),
   stopOverlayPreview: (): Promise<void> => ipcRenderer.invoke('overlay:stopPreview'),
+  togglePinned: (): Promise<boolean> => ipcRenderer.invoke('config:togglePinned'),
   downloadUpdate: (): Promise<void> => ipcRenderer.invoke('update:download'),
   installUpdate: (): Promise<void> => ipcRenderer.invoke('update:install'),
   pickFile: (): Promise<string | null> => ipcRenderer.invoke('dialog:pickFile'),

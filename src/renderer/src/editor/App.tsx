@@ -61,6 +61,11 @@ export default function App(): React.JSX.Element {
     })
   }, [])
 
+  // Picks up changes made from outside this window — e.g. the overlay's own pin button.
+  useEffect(() => {
+    return window.deck.onConfigUpdated((cfg) => setConfig(cfg))
+  }, [])
+
   const commit = useCallback((next: AppConfig) => {
     setConfig(next)
     window.deck.saveConfig(next).then((res) => setHotkeyError(res.hotkeyError))

@@ -66,6 +66,7 @@ export default function SettingsModal(props: Props): React.JSX.Element {
   const [autoLaunch, setAutoLaunch] = useState(props.config.autoLaunch)
   const [showPageDots, setShowPageDots] = useState(props.config.showPageDots)
   const [pinned, setPinned] = useState(props.config.pinned)
+  const [showPinButton, setShowPinButton] = useState(props.config.showPinButton)
   const [gridStyle, setGridStyle] = useState<GridStyle>(props.config.gridStyle)
   const [closeZone, setCloseZone] = useState<CloseZoneStyle>(props.config.closeZone)
 
@@ -73,8 +74,8 @@ export default function SettingsModal(props: Props): React.JSX.Element {
   // editor and keep it in sync as these fields change, so there is no separate "fake"
   // preview that could ever look different from the real thing.
   useEffect(() => {
-    window.deck.previewOverlay({ ...props.config, gridStyle, showPageDots, closeZone, pinned })
-  }, [gridStyle, showPageDots, closeZone, pinned])
+    window.deck.previewOverlay({ ...props.config, gridStyle, showPageDots, closeZone, pinned, showPinButton })
+  }, [gridStyle, showPageDots, closeZone, pinned, showPinButton])
 
   useEffect(() => {
     return () => {
@@ -97,7 +98,7 @@ export default function SettingsModal(props: Props): React.JSX.Element {
     })
 
   const save = (): void => {
-    props.onSave({ hotkey, autoLaunch, showPageDots, gridStyle, closeZone, pinned })
+    props.onSave({ hotkey, autoLaunch, showPageDots, gridStyle, closeZone, pinned, showPinButton })
     window.deck.stopOverlayPreview()
     props.onClose()
   }
@@ -165,6 +166,16 @@ export default function SettingsModal(props: Props): React.JSX.Element {
             type="checkbox"
             checked={pinned}
             onChange={(e) => setPinned(e.target.checked)}
+          />
+        </div>
+
+        <div className="field field--row">
+          <label htmlFor="pinbutton">오버레이에 고정 버튼 표시 (오른쪽 위 📌 — 눌러서 바로 고정 켜고 끄기)</label>
+          <input
+            id="pinbutton"
+            type="checkbox"
+            checked={showPinButton}
+            onChange={(e) => setShowPinButton(e.target.checked)}
           />
         </div>
 

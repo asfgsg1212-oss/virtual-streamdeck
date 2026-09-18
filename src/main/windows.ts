@@ -111,6 +111,8 @@ export function toggleOverlay(): void {
   const cursor = screen.getCursorScreenPoint()
 
   win.setBounds(boundsAround(cursor.x, cursor.y, width, height))
+  // Only draggable (via the hamburger handle) in pinned mode — a normal popup shouldn't move.
+  win.setMovable(config.pinned)
   win.setIgnoreMouseEvents(false)
   win.showInactive()
   // The window is focusable:false so it can never blur-to-hide on an outside click; Escape is

@@ -31,7 +31,8 @@ function defaultConfig(): AppConfig {
     gridStyle: { ...DEFAULT_GRID_STYLE },
     showPageDots: true,
     closeZone: { ...DEFAULT_CLOSE_ZONE },
-    pinned: false
+    pinned: false,
+    showPinButton: true
   }
 }
 
