@@ -61,6 +61,74 @@ function clampZone(v: number, key: keyof typeof CLOSE_ZONE_LIMITS): number {
   return Math.min(max, Math.max(min, v))
 }
 
+function FeedbackBox(): React.JSX.Element {
+  const [message, setMessage] = useState('')
+  const [contact, setContact] = useState('')
+  const [sending, setSending] = useState(false)
+  const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null)
+
+  const send = async (): Promise<void> => {
+    setSending(true)
+    setResult(null)
+    const res = await window.deck.sendFeedback(message, contact)
+    setSending(false)
+    if (!res.ok) {
+      setResult({ ok: false, text: res.error ?? '전송에 실패했어요.' })
+      return
+    }
+    setMessage('')
+    setResult({
+      ok: true,
+      text:
+        res.mode === 'browser'
+          ? '열린 브라우저 페이지에서 "Submit new issue"를 눌러야 전송돼요.'
+          : '보냈어요. 고마워요!'
+    })
+  }
+
+  return (
+    <div className="field">
+      <label>피드백 보내기</label>
+      <p className="field-hint">
+        불편한 점, 있었으면 하는 기능, 버그 뭐든 적어서 보내주세요. 개발자한테 바로 전달돼요.
+      </p>
+      <textarea
+        className="field-input"
+        rows={4}
+        maxLength={2000}
+        value={message}
+        onChange={(e) => setMessage(e.target.value)}
+        placeholder="예) 버튼을 더 크게 하고 싶어요 / 이럴 때 오류가 나요"
+      />
+      <input
+        className="field-input"
+        maxLength={100}
+        value={contact}
+        onChange={(e) => setContact(e.target.value)}
+        placeholder="답장 받을 연락처 (선택)"
+      />
+      <div className="field-row">
+        <button
+          type="button"
+          className="btn-primary"
+          disabled={sending || !message.trim()}
+          onClick={send}
+        >
+          {sending ? '보내는 중…' : '피드백 보내기'}
+        </button>
+        {result && (
+          <span
+            className="field-hint"
+            style={{ color: result.ok ? 'var(--accent)' : 'var(--danger)' }}
+          >
+            {result.text}
+          </span>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function SettingsModal(props: Props): React.JSX.Element {
   const [hotkey, setHotkey] = useState(props.config.hotkey)
   const [autoLaunch, setAutoLaunch] = useState(props.config.autoLaunch)
@@ -322,6 +390,8 @@ export default function SettingsModal(props: Props): React.JSX.Element {
             기본값으로 초기화
           </button>
         </div>
+
+        <FeedbackBox />
 
         <div className="modal-actions">
           <div className="modal-actions-spacer" />

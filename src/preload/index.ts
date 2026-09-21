@@ -8,6 +8,13 @@ const api = {
     ipcRenderer.invoke('config:save', config),
   executeAction: (action: ButtonAction): Promise<void> =>
     ipcRenderer.invoke('action:execute', action),
+  runFromEditor: (action: ButtonAction): Promise<void> =>
+    ipcRenderer.invoke('action:runFromEditor', action),
+  sendFeedback: (
+    message: string,
+    contact: string
+  ): Promise<{ ok: boolean; mode?: 'issue' | 'browser'; error?: string }> =>
+    ipcRenderer.invoke('feedback:send', message, contact),
   hideOverlay: (): Promise<void> => ipcRenderer.invoke('overlay:hide'),
   resizeOverlayForPage: (cols: number, rows: number): Promise<void> =>
     ipcRenderer.invoke('overlay:resizeForPage', cols, rows),

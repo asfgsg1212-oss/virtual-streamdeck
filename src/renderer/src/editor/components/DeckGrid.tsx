@@ -5,6 +5,8 @@ interface Props {
   cols: number
   rows: number
   buttons: (DeckButton | null)[]
+  /** Edit mode: cells open the editor and can be dragged around. Otherwise a filled cell just runs. */
+  editing: boolean
   onCellClick: (index: number) => void
   onSwap: (a: number, b: number) => void
 }
@@ -25,8 +27,8 @@ export default function DeckGrid(props: Props): React.JSX.Element {
         return (
           <div
             key={i}
-            className={`deck-cell ${btn ? '' : 'deck-cell--empty'} ${dragOver === i ? 'is-drop-target' : ''}`}
-            draggable={!!btn}
+            className={`deck-cell ${btn ? '' : 'deck-cell--empty'} ${dragOver === i ? 'is-drop-target' : ''} ${props.editing ? '' : 'deck-cell--use'}`}
+            draggable={props.editing && !!btn}
             onClick={() => props.onCellClick(i)}
             onDragStart={(e) => {
               e.dataTransfer.setData('text/plain', String(i))
@@ -41,7 +43,7 @@ export default function DeckGrid(props: Props): React.JSX.Element {
               e.preventDefault()
               setDragOver(null)
               const from = Number(e.dataTransfer.getData('text/plain'))
-              if (!Number.isNaN(from) && from !== i) props.onSwap(from, i)
+              if (props.editing && !Number.isNaN(from) && from !== i) props.onSwap(from, i)
             }}
           >
             {btn ? (
@@ -56,7 +58,7 @@ export default function DeckGrid(props: Props): React.JSX.Element {
                 <span className="deck-cell-label">{btn.label}</span>
               </>
             ) : (
-              <span className="deck-cell-plus">+</span>
+              props.editing && <span className="deck-cell-plus">+</span>
             )}
           </div>
         )

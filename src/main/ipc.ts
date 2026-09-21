@@ -3,7 +3,7 @@ import { autoUpdater } from 'electron-updater'
 import { readFileSync } from 'fs'
 import { extname } from 'path'
 import { loadConfig, saveConfig } from './config'
-import { executeAction } from './actions'
+import { captureFocus, executeAction, needsForegroundApp } from './actions'
 import {
   hideOverlay,
   getExistingOverlayWindow,
@@ -15,6 +15,7 @@ import {
 } from './windows'
 import { listRunningApps } from './apps'
 import { listAudioApps } from './media'
+import { sendFeedback } from './feedback'
 import { AppConfig, ButtonAction } from '../shared/types'
 
 interface IpcDeps {
@@ -70,6 +71,18 @@ export function registerIpcHandlers(deps: IpcDeps): void {
     await executeAction(action)
   })
 
+  // Buttons pressed inside the editor window itself. Launch/URL/media work from anywhere, but
+  // keystrokes/typing/clicks would land on the editor, so minimize it first to hand focus back
+  // to whatever app the user was in.
+  ipcMain.handle('action:runFromEditor', async (_e, action: ButtonAction) => {
+    if (needsForegroundApp(action)) {
+      captureFocus()
+      getEditorWindow()?.minimize()
+      await new Promise((resolve) => setTimeout(resolve, 300))
+    }
+    await executeAction(action)
+  })
+
   ipcMain.handle('overlay:hide', () => {
     hideOverlay()
   })
@@ -101,6 +114,10 @@ export function registerIpcHandlers(deps: IpcDeps): void {
 
     return config.pinned
   })
+
+  ipcMain.handle('feedback:send', (_e, message: string, contact: string) =>
+    sendFeedback(String(message ?? ''), String(contact ?? ''))
+  )
 
   ipcMain.handle('update:download', () => {
     autoUpdater.downloadUpdate()

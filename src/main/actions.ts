@@ -162,6 +162,15 @@ async function runSingle(type: string, value: string, targetApp?: string): Promi
   }
 }
 
+const INPUT_ACTION_TYPES = new Set(['hotkey', 'text', 'mouseClick'])
+
+/** True for actions that send input to whichever window has focus — pointless if that's still
+ *  the editor itself, so a run started from the editor has to get out of the way first. */
+export function needsForegroundApp(action: ButtonAction): boolean {
+  if (action.type === 'macro') return !!action.steps?.some((s) => INPUT_ACTION_TYPES.has(s.type))
+  return INPUT_ACTION_TYPES.has(action.type)
+}
+
 export async function executeAction(action: ButtonAction): Promise<void> {
   const isOsFacing = action.type !== 'launch' && action.type !== 'url'
   if (isOsFacing) await restoreFocus()

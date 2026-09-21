@@ -51,6 +51,7 @@ export default function App(): React.JSX.Element {
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [hotkeyError, setHotkeyError] = useState(false)
+  const [editMode, setEditMode] = useState(false)
 
   useEffect(() => {
     window.deck.getConfig().then((cfg) => {
@@ -230,6 +231,30 @@ export default function App(): React.JSX.Element {
   const enterFolder = (buttonId: string): void => setFolderPath((p) => [...p, buttonId])
   const goBack = (): void => setFolderPath((p) => p.slice(0, -1))
 
+  /** Outside edit mode a cell just runs its button, same as in the popup overlay. */
+  const handleCellClick = (index: number): void => {
+    if (editMode) {
+      setEditingIndex(index)
+      return
+    }
+    const btn = grid.buttons[index]
+    const action = btn?.action
+    if (!btn || !action) return
+    if (action.type === 'folder') {
+      enterFolder(btn.id)
+    } else if (action.type === 'switchPage') {
+      const ids = profile.pages.map((p) => p.id)
+      if (action.value === 'next' || action.value === 'prev') {
+        const delta = action.value === 'next' ? 1 : -1
+        selectPage(ids[(ids.indexOf(page.id) + delta + ids.length) % ids.length])
+      } else if (ids.includes(action.value)) {
+        selectPage(action.value)
+      }
+    } else {
+      window.deck.runFromEditor(action)
+    }
+  }
+
   const otherPages = profile.pages.filter((p) => p.id !== page.id)
 
   return (
@@ -263,25 +288,35 @@ export default function App(): React.JSX.Element {
               ← 뒤로
             </button>
           )}
-          <span className="page-size">
-            <input
-              className="field-input field-input--small"
-              type="number"
-              min={1}
-              max={6}
-              value={grid.cols}
-              onChange={(e) => resizeGrid(Math.min(6, Math.max(1, Number(e.target.value) || 1)), grid.rows)}
-            />
-            ×
-            <input
-              className="field-input field-input--small"
-              type="number"
-              min={1}
-              max={5}
-              value={grid.rows}
-              onChange={(e) => resizeGrid(grid.cols, Math.min(5, Math.max(1, Number(e.target.value) || 1)))}
-            />
-          </span>
+          <span className="header-spacer" />
+          {editMode && (
+            <span className="page-size">
+              <input
+                className="field-input field-input--small"
+                type="number"
+                min={1}
+                max={6}
+                value={grid.cols}
+                onChange={(e) => resizeGrid(Math.min(6, Math.max(1, Number(e.target.value) || 1)), grid.rows)}
+              />
+              ×
+              <input
+                className="field-input field-input--small"
+                type="number"
+                min={1}
+                max={5}
+                value={grid.rows}
+                onChange={(e) => resizeGrid(grid.cols, Math.min(5, Math.max(1, Number(e.target.value) || 1)))}
+              />
+            </span>
+          )}
+          <button
+            type="button"
+            className={`btn-secondary edit-toggle ${editMode ? 'is-active' : ''}`}
+            onClick={() => setEditMode((m) => !m)}
+          >
+            {editMode ? '✓ 편집 끝내기' : '✎ 편집'}
+          </button>
         </header>
         {hotkeyError && (
           <div className="app-banner app-banner--error">
@@ -293,9 +328,15 @@ export default function App(): React.JSX.Element {
           cols={grid.cols}
           rows={grid.rows}
           buttons={grid.buttons}
-          onCellClick={(i) => setEditingIndex(i)}
+          editing={editMode}
+          onCellClick={handleCellClick}
           onSwap={swapButtons}
         />
+        <p className="deck-mode-hint">
+          {editMode
+            ? '편집 중 — 칸을 눌러 버튼을 만들거나 고치고, 끌어서 자리를 바꿔요.'
+            : '버튼을 누르면 바로 실행돼요. 수정하거나 추가하려면 오른쪽 위 ✎ 편집을 눌러요.'}
+        </p>
       </main>
 
       {editingIndex !== null && (
